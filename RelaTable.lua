@@ -97,7 +97,7 @@ function Database:For(path, alphabetical)
     if #repo > 0 then
         return ipairs(repo)
     elseif alphabetical then
-        return self.table.spairs(repo)
+        return spairs(repo)
     end
     return pairs(repo)
 end

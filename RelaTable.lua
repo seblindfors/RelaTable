@@ -6,10 +6,10 @@
 -- Website: https://github.com/seblindfors/RelaTable
 -- Licence: GPL version 2 (General Public License)
 
-local Lib = LibStub:NewLibrary('RelaTable', 1)
+local Lib = LibStub:NewLibrary('RelaTable', 2)
 if not Lib then return end
 
-local compare, copy, map, merge, spairs, unravel;
+local compare, copy, map, mapt, merge, spairs, unravel;
 local assert, strsplit, select, type = assert, strsplit, select, type;
 local next, ipairs, pairs, sort = next, ipairs, pairs, sort;
 local getmetatable, setmetatable, rawget, rawset = getmetatable, setmetatable, rawget, rawset;
@@ -19,12 +19,10 @@ local getmetatable, setmetatable, rawget, rawset = getmetatable, setmetatable, r
 ----------------------------------------------------------------
 local Database = {};
 
-local __mt = {
-    __call = function(self, ...)
-        local func = select('#', ...) > 1 and self.Set or self.Get;
-        return func(self, ...)
-    end;
-}
+local function __call(self, ...)
+    local func = select('#', ...) > 1 and self.Set or self.Get;
+    return func(self, ...)
+end
 
 local function __cd(dir, idx, nxt, ...)
     if not nxt then
@@ -35,6 +33,7 @@ local function __cd(dir, idx, nxt, ...)
     return __cd(dir, nxt, ...)
 end
 
+-- Public
 function Database:Set(path, value)
     local repo, var = __cd(self, strsplit('/', path))
     if repo and var then
@@ -83,13 +82,6 @@ function Database:Default(tbl)
     return tbl;
 end
 
-function Database:Call(path, ...)
-    local repo, func = __cd(self, _G[_], path)
-    if repo and func then
-        return func(repo, ...)
-    end
-end
-
 function Database:Copy(path)
     return copy(self:Get(path))
 end
@@ -106,10 +98,6 @@ function Database:For(path, alphabetical)
 end
 
 -- Callback handling proxy
-function Database:RegisterSafeCallback(...)
-    return self.callbacks:RegisterSafeCallback(...)
-end
-
 function Database:RegisterCallback(...)
     return self.callbacks:RegisterCallback(...)
 end
@@ -118,6 +106,17 @@ function Database:RegisterCallbacks(...)
     local callback, owner = ...;
     for i = 3, select('#', ...) do
         self.callbacks:RegisterCallback(select(i, ...), callback, owner)
+    end
+end
+
+function Database:RegisterSafeCallback(...)
+    return self.callbacks:RegisterSafeCallback(...)
+end
+
+function Database:RegisterSafeCallbacks(...)
+    local callback, owner = ...;
+    for i = 3, select('#', ...) do
+        self.callbacks:RegisterSafeCallback(select(i, ...), callback, owner)
     end
 end
 
@@ -172,7 +171,7 @@ function compare(t1, t2)
     elseif (t1 and not t2) or (t2 and not t1) then
         return false;
     end
-    if type(t1) ~= "table" then
+    if type(t1) ~= 'table' then
         return false;
     end
     local mt1, mt2 = getmetatable(t1), getmetatable(t2)
@@ -196,7 +195,7 @@ end
 
 function copy(src)
     local srcType, t = type(src)
-    if srcType == "table" then
+    if srcType == 'table' then
         t = {};
         for key, value in next, src, nil do
             t[copy(key)] = copy(value)
@@ -210,7 +209,7 @@ end
 
 function map(f, v, ...)
     if (v ~= nil) then
-        return f(v), map(...)
+        return f(v), map(f, ...)
     end
 end
 
@@ -220,25 +219,30 @@ function mapt(f, t)
     end
 end
 
-function merge(t1, t2)
+function merge(t1, t2, t3, ...)
     for k, v in pairs(t2) do
-        if (type(v) == "table") and (type(t1[k] or false) == "table") then
+        if (type(v) == 'table') and (type(t1[k] or false) == 'table') then
             merge(t1[k], t2[k])
         else
             t1[k] = v;
         end
     end
+    if (type(t3) == 'table') then
+        return merge(t1, t3, ...)
+    end
     return t1;
 end
 
-function spairs(t, order)
-    local keys = {unravel(t)}
-    if order then
-        sort(keys, function(a,b) return order(t, a, b) end)
-    else
-        sort(keys)
+local function ksort(t, k1, k2)
+    if tonumber(k1) and tonumber(k2) then
+        return k1 < k2;
     end
-    local i, k = 0;
+    return tostring(k1) < tostring(k2)
+end
+
+function spairs(t, order)
+    local i, keys, sorter, k = 0, {unravel(t)}, order or ksort;
+    sort(keys, function(a,b) return sorter(t, a, b) end)
     return function()
         i = i + 1;
         k = keys[i];
@@ -271,7 +275,7 @@ local TableUtils = setmetatable({
 ----------------------------------------------------------------
 setmetatable(Lib, {
     __newindex = nop;
-    __call = function(self, id, db)
+    __call = function(self, id, db, ignoreHookEvents)
         if id then
             local dbHandle = rawget(self, id)
             if dbHandle then
@@ -283,17 +287,22 @@ setmetatable(Lib, {
         local callbackHandle = Mixin(CreateFrame('Frame'), Callbacks)
         callbackHandle:OnLoad()
 
-        Mixin(db, Database)
-        db.table = copy(TableUtils);
         db.default = db;
-        db.callbacks = callbackHandle;
 
-        if (EventRegistry and EventRegistry.TriggerEvent) then
+        if (ignoreHookEvents ~= false and EventRegistry and EventRegistry.TriggerEvent) then
             hooksecurefunc(EventRegistry, 'TriggerEvent', function(_, ...)
                 db:TriggerEvent(...)
             end)
         end
 
-        return setmetatable(db, __mt)
+        return setmetatable(db, {
+            __call = __call;
+            __index = setmetatable(CopyTable(Database), {
+                __index = {
+                    table = copy(TableUtils);
+                    callbacks = callbackHandle;
+                };
+            });
+        })
     end;
 })

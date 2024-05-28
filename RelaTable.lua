@@ -102,6 +102,10 @@ function Database:RegisterCallback(...)
     return self.callbacks:RegisterCallback(...)
 end
 
+function Database:UnregisterCallback(...)
+    return self.callbacks:UnregisterCallback(...)
+end
+
 function Database:RegisterCallbacks(...)
     local callback, owner = ...;
     for i = 3, select('#', ...) do
@@ -219,16 +223,16 @@ function mapt(f, t)
     end
 end
 
-function merge(t1, t2, t3, ...)
-    for k, v in pairs(t2) do
-        if (type(v) == 'table') and (type(t1[k] or false) == 'table') then
-            merge(t1[k], t2[k])
-        else
-            t1[k] = v;
+function merge(t1, t2, ...)
+    if (type(t2) == 'table') then
+        for k, v in pairs(t2) do
+            if (type(v) == 'table') and (type(t1[k] or false) == 'table') then
+                merge(t1[k], t2[k])
+            else
+                t1[k] = v;
+            end
         end
-    end
-    if (type(t3) == 'table') then
-        return merge(t1, t3, ...)
+        return merge(t1, ...)
     end
     return t1;
 end
@@ -275,7 +279,7 @@ local TableUtils = setmetatable({
 ----------------------------------------------------------------
 setmetatable(Lib, {
     __newindex = nop;
-    __call = function(self, id, db, ignoreHookEvents)
+    __call = function(self, id, db, hookEvents)
         if id then
             local dbHandle = rawget(self, id)
             if dbHandle then
@@ -289,7 +293,7 @@ setmetatable(Lib, {
 
         db.default = db;
 
-        if (ignoreHookEvents ~= false and EventRegistry and EventRegistry.TriggerEvent) then
+        if (hookEvents ~= false and EventRegistry and EventRegistry.TriggerEvent) then
             hooksecurefunc(EventRegistry, 'TriggerEvent', function(_, ...)
                 db:TriggerEvent(...)
             end)

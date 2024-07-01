@@ -10,7 +10,8 @@ local Lib = LibStub:NewLibrary('RelaTable', 2)
 if not Lib then return end
 
 local compare, copy, map, mapt, merge, spairs, unravel;
-local assert, strsplit, select, type = assert, strsplit, select, type;
+local assert, select, type = assert, select, type;
+local tonumber, tostring, strsplit = tonumber, tostring, strsplit;
 local next, ipairs, pairs, sort = next, ipairs, pairs, sort;
 local getmetatable, setmetatable, rawget, rawset = getmetatable, setmetatable, rawget, rawset;
 

@@ -6,7 +6,7 @@
 -- Website: https://github.com/seblindfors/RelaTable
 -- Licence: GPL version 2 (General Public License)
 
-local Lib = LibStub:NewLibrary('RelaTable', 2)
+local Lib = LibStub:NewLibrary('RelaTable', 3)
 if not Lib then return end
 
 local compare, copy, map, mapt, merge, spairs, unravel;
@@ -131,6 +131,10 @@ end
 
 function Database:RunSafe(...)
     return self.callbacks.safeCallback(...)
+end
+
+function Database:Signal(...)
+    return GenerateClosure(self.TriggerEvent, self, ...)
 end
 
 ----------------------------------------------------------------

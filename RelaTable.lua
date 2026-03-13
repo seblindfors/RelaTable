@@ -6,7 +6,7 @@
 -- Website: https://github.com/seblindfors/RelaTable
 -- Licence: GPL version 2 (General Public License)
 
-local Lib = LibStub:NewLibrary('RelaTable', 3)
+local Lib = LibStub:NewLibrary('RelaTable', 4)
 if not Lib then return end
 
 local compare, copy, map, mapt, merge, spairs, unravel;
@@ -284,7 +284,7 @@ local TableUtils = setmetatable({
 ----------------------------------------------------------------
 setmetatable(Lib, {
     __newindex = nop;
-    __call = function(self, id, db, hookEvents)
+    __call = function(self, id, db)
         if id then
             local dbHandle = rawget(self, id)
             if dbHandle then
@@ -297,12 +297,6 @@ setmetatable(Lib, {
         callbackHandle:OnLoad()
 
         db.default = db;
-
-        if (hookEvents ~= false and EventRegistry and EventRegistry.TriggerEvent) then
-            hooksecurefunc(EventRegistry, 'TriggerEvent', function(_, ...)
-                db:TriggerEvent(...)
-            end)
-        end
 
         return setmetatable(db, {
             __call = __call;

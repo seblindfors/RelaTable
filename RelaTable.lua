@@ -1,12 +1,12 @@
 ----------------------------------------------------------------
 -- RelaTable (╯°□°）╯︵ ┻━┻
 ----------------------------------------------------------------
--- 
+--
 -- Author:  Sebastian Lindfors (Munk / MunkDev)
 -- Website: https://github.com/seblindfors/RelaTable
 -- Licence: GPL version 2 (General Public License)
 
-local Lib = LibStub:NewLibrary('RelaTable', 4)
+local Lib = LibStub:NewLibrary('RelaTable', 5)
 if not Lib then return end
 
 local compare, copy, map, mapt, merge, spairs, unravel;
@@ -202,18 +202,18 @@ function compare(t1, t2)
     return true;
 end
 
-function copy(src)
-    local srcType, t = type(src)
-    if srcType == 'table' then
-        t = {};
-        for key, value in next, src, nil do
-            t[copy(key)] = copy(value)
-        end
-        setmetatable(t, copy(getmetatable(src)))
-    else
-        t = src;
+function copy(src, shm)
+    if type(src) ~= 'table' then
+        return src;
     end
-    return t;
+    local t, mt = {}, getmetatable(src)
+    for key, value in next, src, nil do
+        t[copy(key, shm)] = copy(value, shm)
+    end
+    if shm then
+        return setmetatable(t, mt)
+    end
+    return setmetatable(t, copy(mt, shm))
 end
 
 function map(f, v, ...)
